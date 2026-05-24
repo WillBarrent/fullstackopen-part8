@@ -3,19 +3,33 @@ import Authors from "./components/Authors";
 import Books from "./components/Books";
 import NewBook from "./components/NewBook";
 import Login from "./components/Login";
-import { useApolloClient } from "@apollo/client/react";
+import { useApolloClient, useSubscription } from "@apollo/client/react";
 import Recommended from "./components/Recommended";
+import { ALL_BOOKS, BOOK_ADDED } from "./queries";
+import { addBookToCache } from "./utils/cache";
 
 const App = () => {
   const [page, setPage] = useState("authors");
   const [token, setToken] = useState(localStorage.getItem("user-token"));
+  const [notification, setNotification] = useState("");
   const client = useApolloClient();
+
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data }) => {
+      const addedBook = data.data.bookAdded;
+      addBookToCache(client.cache, addedBook);
+      setNotification("New book has been added!");
+      setTimeout(() => {
+        setNotification("")
+      }, 3000);
+    },
+  });
 
   const onLogout = () => {
     setToken(null);
     localStorage.removeItem("user-token");
     client.resetStore();
-    setPage("authors")
+    setPage("authors");
   };
 
   return (
@@ -33,6 +47,8 @@ const App = () => {
         )}
         {token ? <button onClick={onLogout}>logout</button> : null}
       </div>
+
+      <div>{notification}</div>
 
       <Authors show={page === "authors"} token={token} />
 
